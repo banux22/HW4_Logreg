@@ -39,7 +39,8 @@ class DiabetesClassifier:
         
         # 1. Замена нулей на NaN в физиологических признаках
         # TODO: Реализовать замену 0 -> np.nan
-        
+        cols = ['Glucose', 'BloodPressure', 'SkinThickness', 'Insulin', 'BMI']
+        data[cols] = data[cols].replace(0, np.nan)
         # Разделение на X и y
         target_col = 'Outcome'
         if target_col in data.columns:
@@ -51,12 +52,17 @@ class DiabetesClassifier:
             
         # 2. Заполнение пропусков (Imputation)
         # TODO: Реализовать логику fit_transform (если is_training) / transform
-        
+        if is_training:
+            X_imputed = self.imputer.fit_transform(X_raw)
+        else:
+            X_imputed = self.imputer.transform(X_raw)
         # 3. Масштабирование (Scaling)
         # TODO: Реализовать логику fit_transform (если is_training) / transform
-        
+        if is_training:
+            X_processed = self.scaler.fit_transform(X_imputed)
+        else:
+            X_processed = self.scaler.transform(X_imputed)
         # Заглушка, чтобы код не падал до реализации
-        X_processed = np.array([]) 
         
         return X_processed, y
 
@@ -67,6 +73,8 @@ class DiabetesClassifier:
         2. Обучить self.model.
         """
         # TODO: Ваш код здесь
+        X_train, y_train = self.preprocess_data(df_train, is_training=True)
+        self.model.fit(X_train, y_train)
         pass
 
     def predict(self, df_test: pd.DataFrame) -> np.ndarray:
@@ -76,7 +84,8 @@ class DiabetesClassifier:
         2. Вернуть предсказания.
         """
         # TODO: Ваш код здесь
-        return np.array([])
+        X_test, _ = self.preprocess_data(df_test, is_training=False)
+        return self.model.predict(X_test)
 
     def predict_proba(self, df_test: pd.DataFrame) -> np.ndarray:
         """
@@ -84,7 +93,9 @@ class DiabetesClassifier:
         Возвращает вероятность класса 1.
         """
         # TODO: Ваш код здесь
-        return np.array([])
+        X_test, _ = self.preprocess_data(df_test, is_training=False)
+        proba = self.model.predict_proba(X_test)
+        return proba[:, 1]
 
     def evaluate(self, df_test: pd.DataFrame) -> dict:
         """
@@ -97,10 +108,14 @@ class DiabetesClassifier:
         - ROC-AUC
         """
         # TODO: Получить предсказания и сравнить с реальным y из df_test
+        y_pred = self.predict(df_test)
+        y_proba = self.predict_proba(df_test)
+        y_true = df_test['Outcome'].values
         return {
-            'accuracy': 0.0,
-            'precision': 0.0,
-            'recall': 0.0,
-            'f1': 0.0,
-            'roc_auc': 0.0
+            'accuracy': accuracy_score(y_true, y_pred),
+            'precision': precision_score(y_true, y_pred),
+            'recall': recall_score(y_true, y_pred),
+            'f1': f1_score(y_true, y_pred),
+            'roc_auc': roc_auc_score(y_true, y_proba)
         }
+
